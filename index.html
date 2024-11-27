@@ -457,7 +457,7 @@ var player = {
 	moveTop:function(){
 		var interval = setInterval(function(){
 			if(player.y>=20)
-			player.y-=player.vy/game.fps;
+			player.y-=200/game.fps;
 			else
 			player.x+=180/game.fps;
 			if(!player.checkinbounds()){
