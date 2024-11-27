@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	  <script language="javascript" src="scripts/jquery.js" type="text/javascript"></script> 
+    <script language="javascript" src="scripts/jquery.hotkeys.js" type="text/javascript"></script>  
+    <script language="javascript" src="scripts/sound.js" type="text/javascript"></script>
+  
+
+	
+	<title>Space Impact</title>
+</head>
+<style type="text/css">
+	#gaming{
+		width: 400px;
+		height:300px ;
+		margin: auto;
+		border: 1px solid black;
+		margin-top: 80px ;
+		background: grey;
+	}
+	#controls{
+		width: 400px;
+		height:100px ;
+		margin: auto;
+		background: white;
+		padding: 20px;
+		text-align: center;
+	}
+	.button-game{
+		width: 50px;
+		height: 50px;
+		font-size: 30px;
+		padding: 5px;
+		border: 1px solid black;
+		outline: none;
+		
+	}
+</style>
+<body>
+<div id="gaming"></div>
+<div id=controls>
+	<button class="button-game" onclick="moveUp()">&ShortUpArrow;</button><br><button class="button-game" id="pauseBtn" onclick="pause()">&#127918;</button>
+	<button class="button-game" style="margin-left:30px;margin-top:-50px;"  onclick="moveDown()">&ShortDownArrow;</button>
+	<button class="button-game" style="margin-left:30px;margin-top:-50px;" onclick="fire()">O</button>
+</div>
+
+
+
+<script type="text/javascript">
+	
+(function(){
+
+var img_location='images/';
+var image_extension={png:'png',jpg:'jpg'};
+
+function createImage(image,width,height) {
+	// body...
+	var width = width || image.width;
+	var height = height || image.height;
+	return {
+		width:width,
+		height:height,
+		draw: function(canvas,x,y,dwidth,dheight){
+			canvas.drawImage(image,x,y,dwidth,dheight)
+		},
+		fill:function(canvas,color,x0,y0,x1,y1){
+			canvas.fillStyle = color;
+			canvas.fillRect(x0,y0,x1,y1);
+
+		},
+		update:function(){
+
+		}
+	}
+}
+
+
+function setFeatures(){
+	return{
+		x:0,y:0,draw:function(){},fill:function(){},update:function(){},width:0,height:0
+	}
+}
+
+
+function Load(url,callback){
+	var img = new Image();
+	var object = setFeatures();
+	img.onload = function(){
+		var img_prop = createImage(this);
+		object = $.extend(object,img_prop);
+	
+	}
+	img.src=img_location+url+'.'+image_extension.png;
+	return object;
+}
+
+function canvasFunctions() {
+	return{
+		fill:function(canvas,color,x0,y0,x1,y1){
+			canvas.fillStyle = color;
+			canvas.fillRect(x0,y0,x1,y1);
+
+		},
+		writeText:function(canvas,text,x0,y0,fillcolor,textAlign,fontsize){
+		if(fillcolor)
+		canvas.fillStyle = fillcolor;
+		if(textAlign)
+		canvas.textAlign = textAlign;
+		if(fontsize)
+		canvas.font = fontsize+`px Verdana`;
+		canvas.fillText(text, x0, y0);
+	
+		}
+
+	}
+	// body...
+}
+
+
+window.Drawer = Load; 
+window.CanvasFunctions = canvasFunctions();
+}());
+
+
+
+  		window.keydown={};
+
+  		function keyname(event){
+
+  			return jQuery.hotkeys.specialKeys[event.which] || String.fromCharCode(event.which).toLowerCase();
+  		}
+
+  		
+	$(document).bind("keydown",function(event){
+
+  			keydown[keyname(event)]=true;
+  		});
+
+  		$(document).bind("keyup",function(event){
+
+  			keydown[keyname(event)]=false;
+  		});
+  	
+
+
+
+function moveUp(){
+	player.up();
+}
+
+function moveDown(){
+	player.down();
+}
+function pause(){
+	var x=document.getElementById('pauseBtn')
+	if(!gameMenu.started){
+		gameMenu.newGame();
+		x.innerHTML='||'
+	}
+	else if(gameMenu.started && !gameMenu.paused)
+	{
+		gameMenu.pauseGame();
+		x.innerHTML='&#127918;'
+	}
+	else if(gameMenu.started && gameMenu.paused)
+	{
+		gameMenu.resumeGame();
+		x.innerHTML='||'
+	}
+}
+function fire(){
+	bullets.shootonce();
+}
+
+
+
+var game={
+	fps:60,
+	canvas:null,
+	canvas_height:300,
+	canvas_width:400,
+	gameinterval:null,
+	age:0,
+	back:Drawer('back'),
+	createCanvas:function(){
+		var canvasElement=$("<canvas width="+this.canvas_width+" height="+this.canvas_height+"></canvas>");
+		var canvas=canvasElement.get(0).getContext("2d");
+		(canvasElement).appendTo('#gaming');
+		return canvas;
+	},
+	fillCanvas:function(){
+		CanvasFunctions.fill(this.canvas,"#6fa07e",0,0,this.canvas_width,this.canvas_height);
+		this.back.draw(this.canvas,0,this.canvas_height-50,this.canvas_width,50);
+
+	},
+	newGame:function(){
+		this.age=0;
+		player.life=3;
+		enemies.list=[];
+		bullets.bullets=[];
+		enemybullets.bullets=[];
+		player.score=0;
+		player.x=10;
+		player.y=(game.canvas_height-30)/2;
+		this.startGame();
+
+	},
+	draw:function(){
+		player.draw();
+		bullets.draw();
+		enemies.draw();
+		enemybullets.draw();
+
+	},
+	update:function(age){
+		bullets.update();
+		enemies.update(age);
+		enemybullets.update();
+		this.showData();
+	},
+
+	checkKeys:function() {
+		$(document).bind('keydown',function(event){
+  		var key = window.keydown
+		if(key.up==true){
+			player.up();
+		}
+		if(key.down==true){
+			player.down();
+		}
+
+		if(key.space==true && !bullets.shooting){
+			bullets.shoot();
+		}
+		
+		});
+		$(document).bind('keyup',function(event){
+  		var key = window.keydown
+		if(key.space==false && bullets.shooting){
+			bullets.stopShoot();
+		}
+		});
+		
+
+		
+	},
+	startGame:function(){
+		if(this.canvas===null)
+		this.canvas = this.createCanvas();
+		this.gameinterval = setInterval(function(){
+		game.fillCanvas();
+		game.age+=1;		
+		game.draw();
+		game.update(game.age);
+		player.update();
+		game.checkCollisions();
+
+
+		},1000/this.fps);
+
+
+	},
+	pauseGame:function(){
+		clearInterval(this.gameinterval);
+		game.fillCanvas();
+
+		CanvasFunctions.writeText(this.canvas,'Paused',this.canvas_width/2,this.canvas_height/2,'black','center')
+	},
+	showData:function(){
+		var lives ='';
+		for (var i = 0; i < player.life; i++) {
+			lives+=String.fromCharCode(parseInt(2665,16));
+		}
+		CanvasFunctions.writeText(this.canvas,lives,20,20,'black','start',30);
+		CanvasFunctions.writeText(this.canvas,'Score:'+player.score,this.canvas_width-20,20,'black','end',15);
+
+
+	},
+	collision:function(a,b){
+		if(a.x<(b.x+b.width) && a.x>b.x && a.y>b.y && a.y<b.y+b.height){
+			return true;
+			}
+		if(b.x<(a.x+a.width) && b.x>a.x && b.y>a.y && b.y<a.y+a.height){
+			return true;
+			}
+		return false;
+	},
+	checkCollisions:function(){
+		enemies.list.forEach(en=>{
+			bullets.bullets.forEach(x=>{
+				if(game.collision(x,en)){
+					player.score+=en.hitpoints;
+					en.life--;
+					if(en.life==0)
+					{
+						en.explode();
+						Sound.play('explosion')
+						if(en.type=='boss'){
+							game.levelcomplete();
+						}
+					}
+					x.active=false;
+				}
+			});
+
+			if(game.collision(player,en)){
+				en.explode();
+				player.life--;
+				Sound.play('life')
+			}	
+			
+		});
+		enemybullets.bullets.forEach(bullet=>{
+			if(game.collision(player,bullet)){
+				bullet.active=false;
+				player.life--;
+				Sound.play('life')
+
+			}
+			bullets.bullets.forEach(x=>{
+				if(game.collision(x,bullet)){
+					bullet.active=false;
+					x.active=false;
+					player.score+=bullet.points;
+				}
+			});
+		})
+	},
+	homePage:function(){
+		if(this.canvas===null)
+			this.canvas = this.createCanvas();
+		CanvasFunctions.fill(this.canvas,"lightblue",0,0,this.canvas_width,this.canvas_height);
+		CanvasFunctions.writeText(this.canvas,'START GAME',this.canvas_width/2,this.canvas_height/2,'black','center',30);
+
+
+
+	},
+	gameOver:function(){
+		Sound.play('gameover');
+		clearInterval(this.gameinterval);
+		CanvasFunctions.fill(this.canvas,"darkred",0,0,this.canvas_width,this.canvas_height);
+		CanvasFunctions.writeText(this.canvas,'GAME OVER, RESTART?',this.canvas_width/2,this.canvas_height/2,'white','center',30);
+		gameMenu.started=false;
+
+	},
+	levelcomplete:function(){
+		Sound.play('level')
+		player.levelcomplete();
+	}
+
+}
+
+game.checkKeys();
+
+var gameMenu={
+	paused:false,
+	started:false,
+	currentpage:'',
+	newGame:function(){
+		if(!this.started)
+		{
+			game.newGame(); this.started=true;
+			this.paused=false;
+		}
+		else if(this.started && this.paused)
+		{this.resumeGame(); this.paused=false;}
+	},
+	pauseGame:function(){
+		if(!this.paused)
+		{game.pauseGame(); 
+		this.paused=true;}
+		else if(this.paused && this.started){ this.resumeGame(); }
+	},
+	resumeGame:function(){
+		if(this.started && this.paused)
+		{game.startGame();
+		this.paused=false;}
+		else if(!this.started){
+			this.newGame();
+		}
+	},
+	manageMenu:function(){
+		
+
+	},
+	manageKeys(){
+		game.homePage();
+		$(document).bind("keyup",function(event){
+			if(event.which==27){
+				gameMenu.pauseGame();
+			}
+			if(event.which==13){
+
+				gameMenu.newGame();
+			}
+		});
+
+	}
+
+}
+
+gameMenu.manageKeys();
+
+
+
+
+var player = {
+	x:10,
+	character:Drawer('space'),
+	y:(game.canvas_height-30)/2,
+	width:50,
+	height:30,
+	vy:200,
+	life:3,
+	score:0,
+	draw: function(){ this.character.draw(game.canvas,this.x,this.y,this.width,this.height);  },
+	checkinbounds:function(){ return this.x>0 && this.y>(0+5) && this.x<game.canvas_width && this.y<game.canvas_height-this.height },
+	up:function(){
+		var save = parseInt(this.y);
+		this.y-=this.vy/game.fps;
+		if(!this.checkinbounds())
+		this.y=save;
+		
+	},
+	down:function(){
+		var save = parseInt(this.y);
+		this.y+=this.vy/game.fps;
+		if(!this.checkinbounds())
+		this.y=save;
+
+	},
+	update:function(){
+		if(this.life<=0){
+			game.gameOver();
+		}
+	},
+	levelcomplete:function(){
+		if(bullets.bullets)		
+		bullets.bullets.forEach(x=>{
+				x.active=false;
+		});
+
+		if(enemybullets.bullets)
+		enemybullets.bullets.forEach(x=>{
+			x.active=false;
+		})
+		player.moveTop();
+	},
+	moveTop:function(){
+		var interval = setInterval(function(){
+			if(player.y>=20)
+			player.y-=player.vy/game.fps;
+			else
+			player.x+=180/game.fps;
+			if(!player.checkinbounds()){
+				clearInterval(game.gameinterval);
+				clearInterval(interval);
+				CanvasFunctions.fill(game.canvas,"lightblue",0,0,game.canvas_width,game.canvas_height);
+				CanvasFunctions.writeText(game.canvas,'Congratulations',game.canvas_width/2,game.canvas_height/2,'black','center',30);
+				CanvasFunctions.writeText(game.canvas,'Your Score:'+player.score,game.canvas_width/2,game.canvas_height/2+25,'black','center',25);
+				gameMenu.started=false;
+
+			}
+
+		},1000/game.fps)
+	//
+	}
+}
+
+var enemylist=[
+	{y:20,type:'enemy',spawntime:1},
+	{y:20,type:'enemy',spawntime:1.8},
+	{y:20,type:'enemy',spawntime:2.6},
+	{y:20,type:'enemy',spawntime:3.4},
+	{y:20,type:'enemy',spawntime:4.2},
+	{y:20,type:'enemy',spawntime:5},
+	{y:20,type:'enemy',spawntime:5.8},
+	{y:200,type:'turtle',spawntime:7},
+	{y:200,type:'turtle',spawntime:8.5},
+	{y:200,type:'turtle',spawntime:10},
+	{y:250,type:'turtle2',spawntime:20},
+	{y:50,type:'turtle3',spawntime:20},
+	{y:250,type:'turtle2',spawntime:21.5},
+	{y:50,type:'turtle3',spawntime:21.5},
+	{y:250,type:'turtle2',spawntime:23},
+	{y:50,type:'turtle3',spawntime:23},
+	{y:game.canvas_height/2-50,type:'boss',spawntime:35}
+
+
+
+
+	];
+var enemydetails={
+	'enemy':{vx:-30,vy:40,width:30,height:30,bullets:true,nextshot:0,interval:8,bulletspeed:-70,hitpoints:50,life:1,bulletwidth:20,bulletheight:3},
+	'turtle':{vx:-50,vy:0,width:50,height:30,bullets:false,hitpoints:30,life:3},
+	'turtle2':{vx:-30,vy:-10,width:50,height:30,bullets:true,nextshot:0,interval:10,bulletspeed:-70,hitpoints:30,life:3,bulletwidth:20,bulletheight:3},
+	'turtle3':{vx:-30,vy:10,width:50,height:30,bullets:true,nextshot:0,interval:10,bulletspeed:-70,hitpoints:30,life:3,bulletwidth:20,bulletheight:3},
+	'boss':{vx:-20,vy:0,width:100,height:100,bullets:true,nextshot:0,interval:2,bulletspeed:-90,hitpoints:30,life:50,dynamicSpeed:true,changedSpeed:false,bulletwidth:30,bulletheight:10}
+}
+
+
+enemydetails.boss.speedfunction=function(age){
+	if(age/game.fps>=this.spawntime+6){
+		this.vy=-40;
+		this.vx=0;
+		this.changedSpeed = true;
+	}
+
+}
+
+
+var enemy = function(en){
+
+	var newEnemy ={
+	x:game.canvas_width-10,
+	character:Drawer(en.type),	
+	width:30,
+	height:30,
+	vx:-50,
+	vy:0,
+	active:true,
+	draw: function(){ if(this.character!==null) this.character.draw(game.canvas,this.x,this.y,this.width,this.height) },
+	checkinbounds:function(){ return this.y>=0 && this.y<game.canvas_height-this.height },
+	checkcrossed:function(){ return this.x>0 },
+	shoot:function(age){
+		if(this.nextshot==0){
+			this.nextshot =Math.ceil(this.interval*Math.random());
+		}
+		if(age==(this.spawntime+this.nextshot)*game.fps){
+			var bullet={
+			x:this.x,
+			y:this.y+this.height/2,
+			vx:this.bulletspeed,
+			width:this.bulletwidth,
+			height:this.bulletheight,
+			active:true,
+			points:20,
+			draw:function(){ CanvasFunctions.fill(game.canvas,'#000',this.x,this.y,this.width,this.height) },
+			update:function(){ this.x+=this.vx/game.fps; },
+			checkinbounds:function(){ return this.x>0 && this.y>0 && this.x<game.canvas_width && this.y<game.canvas_height }
+			}
+
+			enemybullets.bullets.push(bullet);
+
+			this.nextshot +=this.interval;
+		} 
+	},
+	update:function(age){ 
+		this.x+=this.vx*1/game.fps; 
+		var save = parseInt(this.y);
+		this.y+=this.vy/game.fps;
+		if(!this.checkinbounds())
+		{
+			this.y=save;
+			this.vy=(-1)*this.vy;
+		} 
+		this.y+=this.vy*1/game.fps; 
+		if(this.bullets===true){
+			this.shoot(age);
+		}
+		if(this.dynamicSpeed && !this.changedSpeed){
+			this.speedfunction(age);
+			//this.dynamicSpeed=false;
+		}
+		
+	},
+	explode:function(){
+		this.active=false;
+		}
+	}
+
+	newEnemy = $.extend(newEnemy,en)
+	newEnemy = $.extend(newEnemy,enemydetails[en.type]);
+	
+	return newEnemy;
+
+}
+
+var enemies={
+	list:[],
+	update:function(age){ 
+		this.list = this.list.filter(x=> { return x.active && x.checkcrossed() })
+
+		enemylist.forEach((en)=>{
+			var newEnemy = enemy(en);;
+			if(age==newEnemy.spawntime*game.fps)
+			enemies.list.push(newEnemy);
+			
+		})
+
+		enemies.list.forEach((en)=>{
+			//console.log('updating')
+				en.update(age);
+			
+		})
+	},
+	draw:function(){
+		enemies.list.forEach((en)=>{
+				en.draw();
+			
+		})
+
+	}
+}
+
+var enemybullets={
+	bullets:[],
+	update:function(){
+		this.bullets=this.bullets.filter(function(bullet){
+				return bullet.checkinbounds() && bullet.active;
+		});
+		this.bullets.forEach(x=>{
+			x.update();
+		})
+	},
+	draw:function(){
+		this.bullets.forEach(x=>{
+			x.draw();
+		})
+	}
+}
+var bullets={
+	bullets:[],
+	shooting:false,
+	bps:4,
+	keybps:2,
+	vx:80,
+	shootinterval:null,
+	shoot:function(){
+		this.shooting=true;
+		this.shootinterval = setInterval(function(){
+		var bullet={
+		x:player.x+player.width,
+		y:player.y+player.height/2-5,
+		vx:80,
+		width:15,
+		height:5,
+		active:true,
+		draw:function(){ CanvasFunctions.fill(game.canvas,'#000',this.x,this.y,this.width,this.height) },
+		update:function(){ this.x+=this.vx/game.fps; },
+		checkinbounds:function(){ return this.x>0 && this.y>0 && this.x<game.canvas_width && this.y<game.canvas_height }
+		}
+		Sound.play("shoot");
+		bullets.bullets.push(bullet);
+		},1000/this.keybps);
+	},
+	shootonce:function(){
+				var bullet={
+		x:player.x+player.width,
+		y:player.y+player.height/2-5,
+		vx:80,
+		width:15,
+		height:5,
+		active:true,
+		draw:function(){ CanvasFunctions.fill(game.canvas,'#000',this.x,this.y,this.width,this.height) },
+		update:function(){ this.x+=this.vx/game.fps; },
+		checkinbounds:function(){ return this.x>0 && this.y>0 && this.x<game.canvas_width && this.y<game.canvas_height }
+		}
+		if(bullets.bullets.length>=1)
+		{
+			console.log((bullets.bullets[bullets.bullets.length-1].x-player.x-player.width)/this.vx)
+			if((bullets.bullets[bullets.bullets.length-1].x-player.x-player.width)/this.vx>=1/bullets.bps)
+				{
+					bullets.bullets.push(bullet); 
+					Sound.play("shoot");
+
+				}
+		}
+		else
+		{
+			bullets.bullets.push(bullet);
+			Sound.play("shoot");
+		}
+	},
+	stopShoot:function(){
+		this.shooting=false;
+		clearInterval(this.shootinterval);
+
+	},
+	update:function(){
+		this.bullets=this.bullets.filter(function(bullet){
+				return bullet.checkinbounds() && bullet.active;
+		});
+		this.bullets.forEach(x=>{
+			x.update();
+		})
+	},
+	draw:function(){
+		this.bullets.forEach(x=>{
+			x.draw();
+		})
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+</script>
+
+
+</body>
+</html>
